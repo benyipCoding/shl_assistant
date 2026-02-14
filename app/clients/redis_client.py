@@ -7,7 +7,6 @@ redis_client: Optional[redis.Redis] = None
 
 
 def _build_url() -> str:
-    # user = settings.redis_username
     pwd = settings.redis_password
     host = settings.redis_host
     port = settings.redis_port
