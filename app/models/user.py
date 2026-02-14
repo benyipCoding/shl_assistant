@@ -12,3 +12,6 @@ class User(Base, TimestampMixin):
     is_active = Column(Boolean, default=True)
     mobile_phone = Column(String(20), unique=True, index=True, nullable=True)
     total_token_count = Column(Integer, default=0, nullable=False)
+
+    def __repr__(self):
+        return f"<User id={self.id} username={self.username} email={self.email}>"
