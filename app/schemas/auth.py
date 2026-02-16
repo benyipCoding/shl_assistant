@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
 class AuthRequest(BaseModel):
@@ -12,3 +12,10 @@ class UserSerializer(BaseModel):
     email: EmailStr
     is_active: bool
     model_config = {"from_attributes": True}
+
+
+class CaptchaRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    captcha_id: str = Field(..., alias="captchaId")
+    user_input: str = Field(..., alias="userInput")
