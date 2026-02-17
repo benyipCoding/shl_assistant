@@ -69,5 +69,37 @@ class AuthService:
         )
         return encoded_jwt
 
+    # 创建access token和refresh token的函数
+    def create_refresh_token(self, data: dict) -> str:
+        refresh_expire = datetime.now() + timedelta(
+            days=settings.jwt_refresh_token_expires_days
+        )
+        refresh_to_encode = data.copy()
+        refresh_to_encode.update({"exp": refresh_expire})
+        refresh_token = jwt.encode(
+            refresh_to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
+        )
+        return refresh_token
+
+    def refresh_access_token(self, refresh_token: str) -> Optional[str]:
+        try:
+            payload = jwt.decode(
+                refresh_token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm],
+            )
+            user_id = payload.get("sub")
+            email = payload.get("email")
+            if user_id is None or email is None:
+                return None
+            new_access_token = self.create_access_token(
+                {"sub": user_id, "email": email}
+            )
+            return new_access_token
+        except jwt.ExpiredSignatureError:
+            return None
+        except jwt.InvalidTokenError:
+            return None
+
 
 auth_service = AuthService()

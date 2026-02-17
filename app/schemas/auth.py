@@ -7,10 +7,10 @@ class AuthRequest(BaseModel):
 
 
 class UserSerializer(BaseModel):
-    id: int
+    # id: int
     username: str
     email: EmailStr
-    is_active: bool
+    # is_active: bool
     model_config = {"from_attributes": True}
 
 

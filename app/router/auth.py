@@ -10,6 +10,7 @@ from app.core.config import settings
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 ACCESS_TOKEN_KEY = "access_token"
+REFRESH_TOKEN_KEY = "refresh_token"
 
 
 @router.post("/register", response_model=APIResponse[UserSerializer])
@@ -25,14 +26,6 @@ async def register(
     user = await auth_service.create_user(
         db, username=username, email=payload.email, password=payload.password
     )
-    token = auth_service.create_access_token({"sub": str(user.id), "email": user.email})
-    response.set_cookie(
-        key=ACCESS_TOKEN_KEY,
-        value=token,
-        httponly=settings.cookie_httponly,
-        secure=settings.cookie_secure,
-        samesite=settings.cookie_samesite,
-    )
     return APIResponse(data=user)
 
 
@@ -43,12 +36,24 @@ async def login(
     user = await auth_service.authenticate_user(db, payload.email, payload.password)
     if not user:
         return APIResponse(code=401, message="Invalid credentials")
-    token = auth_service.create_access_token({"sub": str(user.id), "email": user.email})
+
+    data = {"sub": str(user.id), "email": user.email}
+    access_token = auth_service.create_access_token(data)
+    refresh_token = auth_service.create_refresh_token(data)
+
     response.set_cookie(
         key=ACCESS_TOKEN_KEY,
-        value=token,
+        value=access_token,
         httponly=settings.cookie_httponly,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
     )
+    response.set_cookie(
+        key=REFRESH_TOKEN_KEY,
+        value=refresh_token,
+        httponly=settings.cookie_httponly,
+        secure=settings.cookie_secure,
+        samesite=settings.cookie_samesite,
+    )
+
     return APIResponse(data=user)
