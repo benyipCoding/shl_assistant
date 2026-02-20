@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter
 from app.core.lifespan import lifespan
-from app.router import auth, captcha
+from app.router import auth, captcha, shl_analyze
 
 
 app = FastAPI(
@@ -13,6 +13,7 @@ app = FastAPI(
 api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(captcha.router)
+api_router.include_router(shl_analyze.router)
 
 # 将总路由挂载到 app，配置公共前缀 /api_v1
 app.include_router(api_router, prefix="/api_v1")
