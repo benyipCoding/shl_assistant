@@ -17,7 +17,7 @@ def generate_code(length=5):
     return "".join(random.choices(string.ascii_uppercase + string.digits, k=length))
 
 
-@router.get("/")
+@router.get("")
 async def get_captcha(oldCaptchaId: str = Query(None, description="旧验证码ID")):
     captcha_id, data = await captcha_service.generate_captcha(oldCaptchaId)
     return StreamingResponse(

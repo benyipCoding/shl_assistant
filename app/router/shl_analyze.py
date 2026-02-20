@@ -19,7 +19,7 @@ async def ai_rate_limit_key(request: Request):
 
 
 @router.post(
-    "/",
+    "",
     response_model=APIResponse[SHLAnalyzeResult],
     dependencies=[
         # Depends(get_current_user),
