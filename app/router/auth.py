@@ -5,6 +5,9 @@ from app.schemas.response import APIResponse
 from app.schemas.auth import AuthRequest, UserSerializer
 from app.services.auth import auth_service
 from app.core.config import settings
+from app.clients.redis_client import get_redis
+import redis.asyncio as redis
+from fastapi import Request
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -31,7 +34,10 @@ async def register(
 
 @router.post("/login", response_model=APIResponse[UserSerializer])
 async def login(
-    payload: AuthRequest, response: Response, db: AsyncSession = Depends(get_db)
+    payload: AuthRequest,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    redis: redis.Redis = Depends(get_redis),
 ):
     user = await auth_service.authenticate_user(db, payload.email, payload.password)
     if not user:
@@ -41,12 +47,19 @@ async def login(
     access_token = auth_service.create_access_token(data)
     refresh_token = auth_service.create_refresh_token(data)
 
+    await redis.set(
+        f"refresh_token:{refresh_token}",
+        str(user.id),
+        ex=settings.jwt_refresh_token_expires_days * 24 * 3600,
+    )
+
     response.set_cookie(
         key=ACCESS_TOKEN_KEY,
         value=access_token,
         httponly=settings.cookie_httponly,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
+        max_age=settings.jwt_access_token_expires_minutes * 60,
     )
     response.set_cookie(
         key=REFRESH_TOKEN_KEY,
@@ -54,6 +67,34 @@ async def login(
         httponly=settings.cookie_httponly,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
+        max_age=settings.jwt_refresh_token_expires_days * 24 * 3600,
     )
 
     return APIResponse(data=user)
+
+
+@router.post("/logout", response_model=APIResponse)
+async def logout(
+    request: Request, response: Response, redis: redis.Redis = Depends(get_redis)
+):
+    refresh_token = request.cookies.get(REFRESH_TOKEN_KEY)
+
+    # 如果找到了 refresh_token，将其从 Redis 中作废
+    if refresh_token:
+        await redis.delete(f"refresh_token:{refresh_token}")
+
+    # 清除客户端的 Cookie
+    response.delete_cookie(
+        key=ACCESS_TOKEN_KEY,
+        secure=settings.cookie_secure,
+        httponly=settings.cookie_httponly,
+        samesite=settings.cookie_samesite,
+    )
+    response.delete_cookie(
+        key=REFRESH_TOKEN_KEY,
+        secure=settings.cookie_secure,
+        httponly=settings.cookie_httponly,
+        samesite=settings.cookie_samesite,
+    )
+
+    return APIResponse(message="Successfully logged out")
