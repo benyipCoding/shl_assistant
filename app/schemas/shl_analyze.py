@@ -8,7 +8,7 @@ class ImageData(BaseModel):
 
 class SHLAnalyzePayload(BaseModel):
     images_data: list[ImageData]
-    llmKey: str
+    llmId: int
 
 
 class SHLAnalyzeResult(BaseModel):

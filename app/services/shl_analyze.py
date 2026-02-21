@@ -4,10 +4,14 @@ from app.schemas.shl_analyze import SHLAnalyzePayload
 from google.genai import types
 from app.clients.gemini import get_gemini_client
 import json
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.token_record import token_record_service
 
 
 class SHLAnalyzeService:
-    def analyze(self, payload: SHLAnalyzePayload):
+    async def analyze(
+        self, payload: SHLAnalyzePayload, db: AsyncSession, client_ip: str, llm_key: str
+    ):
         """
         images_data expected format:
         [{"mimeType": "image/jpeg", "data": "<base64_encoded_string>"}, ...]
@@ -31,7 +35,7 @@ class SHLAnalyzeService:
             # Call the model using the typed GenerateContentConfig
             client = get_gemini_client()
             response = client.models.generate_content(
-                model=payload.llmKey,  # Pro models are recommended for deep reasoning and coding tasks
+                model=llm_key,  # Pro models are recommended for deep reasoning and coding tasks
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction=system_prompt,
@@ -39,10 +43,15 @@ class SHLAnalyzeService:
                 ),
             )
 
-            total_token_count = json.loads(response.json())["usage_metadata"][
-                "total_token_count"
-            ]
-            print(f"Total token count: {total_token_count}")
+            total_token_count = int(
+                json.loads(response.json())["usage_metadata"]["total_token_count"]
+            )
+            # 把token数量记录到数据库里，方便后续统计和分析
+            # TODO: 可以考虑把每次调用的token数量和用户ID、调用时间等信息一起记录下来，做更细粒度的分析
+            await token_record_service.record_token_usage(
+                db, client_ip, total_token_count, model=llm_key
+            )
+
             result = json.loads(response.text)
             return result
 

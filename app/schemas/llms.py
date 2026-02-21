@@ -8,4 +8,6 @@ class LLMSerializer(BaseModel):
     name: str
     tag: str
     desc: str
+    enabled: bool
+
     model_config = {"from_attributes": True}  # ⭐ Pydantic v2 关键

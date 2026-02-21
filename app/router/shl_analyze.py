@@ -7,6 +7,7 @@ from app.schemas.response import APIResponse
 from app.schemas.shl_analyze import SHLAnalyzeResult
 from fastapi_limiter.depends import RateLimiter
 from fastapi import Request
+from app.services.llms import llms_service
 
 router = APIRouter(prefix="/shl_analyze", tags=["SHL Analyze"])
 
@@ -22,16 +23,21 @@ async def ai_rate_limit_key(request: Request):
     "",
     response_model=APIResponse[SHLAnalyzeResult],
     dependencies=[
-        # Depends(get_current_user),
         Depends(RateLimiter(times=3, seconds=60, identifier=ai_rate_limit_key)),
-        # Depends(ai_guard),
     ],
 )
 async def process_shl_analyze(
-    payload: SHLAnalyzePayload, db: AsyncSession = Depends(get_db)
+    request: Request,
+    payload: SHLAnalyzePayload,
+    db: AsyncSession = Depends(get_db),
 ):
+    client_ip = request.client.host
     try:
-        result = shl_service.analyze(payload)
+        llm = await llms_service.get_by_id(db, payload.llmId)
+        if not llm or not llm.enabled:
+            return APIResponse(message="LLM not found or disabled", code=404)
+
+        result = await shl_service.analyze(payload, db, client_ip, llm.key)
         return APIResponse(data=result)
     except Exception as e:
         return APIResponse(message=str(e), code=500)

@@ -1,8 +1,6 @@
 from typing import List, Optional
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models.llms import LLMs
 
 
@@ -15,6 +13,12 @@ class LLMsService:
     async def get_by_key(self, db: AsyncSession, key: str) -> Optional[LLMs]:
         """Return the first `LLMs` record matching `key`, or `None`."""
         stmt = select(LLMs).where(LLMs.key == key)
+        result = await db.execute(stmt)
+        return result.scalars().first()
+
+    async def get_by_id(self, db: AsyncSession, id: int) -> Optional[LLMs]:
+        """Return the first `LLMs` record matching `id`, or `None`."""
+        stmt = select(LLMs).where(LLMs.id == id)
         result = await db.execute(stmt)
         return result.scalars().first()
 
