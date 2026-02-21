@@ -20,4 +20,4 @@ COPY . .
 EXPOSE 8000
 
 # 请确保您的主入口文件是 main.py，并且 FastAPI 实例名为 app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
