@@ -81,25 +81,5 @@ class AuthService:
         )
         return refresh_token
 
-    def refresh_access_token(self, refresh_token: str) -> Optional[str]:
-        try:
-            payload = jwt.decode(
-                refresh_token,
-                settings.jwt_secret_key,
-                algorithms=[settings.jwt_algorithm],
-            )
-            user_id = payload.get("sub")
-            email = payload.get("email")
-            if user_id is None or email is None:
-                return None
-            new_access_token = self.create_access_token(
-                {"sub": user_id, "email": email}
-            )
-            return new_access_token
-        except jwt.ExpiredSignatureError:
-            return None
-        except jwt.InvalidTokenError:
-            return None
-
 
 auth_service = AuthService()
