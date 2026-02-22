@@ -14,12 +14,6 @@ class TokenRecordService:
         user_id: int = None,
     ):
         try:
-            # stmt = select(TokenRecord).where(TokenRecord.ip == ip)
-            # result = await db.execute(stmt)
-            # record = result.scalars().first()
-            # if record:
-            #     record.token_count += token_count
-            # else:
             record = TokenRecord(
                 ip=ip, token_count=token_count, model=model, user_id=user_id
             )
