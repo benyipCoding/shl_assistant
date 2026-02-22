@@ -34,6 +34,11 @@ class UserAuthMiddleware(BaseHTTPMiddleware):
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
             )
+
+            # 校验 token 类型是否为 access
+            if payload.get("type") != "access":
+                return await call_next(request)
+
             user_id: str = payload.get("sub")
             if user_id is None:
                 return await call_next(request)

@@ -72,7 +72,7 @@ class AuthService:
         expire = datetime.now() + timedelta(
             minutes=settings.jwt_access_token_expires_minutes
         )
-        to_encode.update({"exp": expire})
+        to_encode.update({"exp": expire, "type": "access"})
         encoded_jwt = jwt.encode(
             to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
         )
@@ -84,7 +84,7 @@ class AuthService:
             days=settings.jwt_refresh_token_expires_days
         )
         refresh_to_encode = data.copy()
-        refresh_to_encode.update({"exp": refresh_expire})
+        refresh_to_encode.update({"exp": refresh_expire, "type": "refresh"})
         refresh_token = jwt.encode(
             refresh_to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
         )
@@ -100,6 +100,10 @@ class AuthService:
                 settings.jwt_secret_key,
                 algorithms=[settings.jwt_algorithm],
             )
+            # 校验 token 类型是否为 refresh
+            if payload.get("type") != "refresh":
+                return None
+
             user_id: str = payload.get("sub")
             if user_id is None:
                 return None
