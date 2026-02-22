@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.db import get_db
 from app.schemas.shl_analyze import SHLAnalyzePayload
@@ -8,8 +8,12 @@ from app.schemas.shl_analyze import SHLAnalyzeResult
 from fastapi_limiter.depends import RateLimiter
 from fastapi import Request
 from app.services.llms import llms_service
+from app.depends.jwt_guard import verify_user
 
-router = APIRouter(prefix="/shl_analyze", tags=["SHL Analyze"])
+
+router = APIRouter(
+    prefix="/shl_analyze", tags=["SHL Analyze"], dependencies=[Depends(verify_user)]
+)
 
 
 async def ai_rate_limit_key(request: Request):

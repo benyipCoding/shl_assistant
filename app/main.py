@@ -13,6 +13,7 @@ app = FastAPI(
 # 添加中间件，解析 JWT 并注入 user 到 request.state
 app.add_middleware(UserAuthMiddleware)
 
+
 # 创建一个总的 API 路由，并设置前缀
 api_router = APIRouter()
 api_router.include_router(auth.router)

@@ -2,12 +2,13 @@ from fastapi import APIRouter, Depends, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.db import get_db
 from app.schemas.response import APIResponse
-from app.schemas.auth import AuthRequest, UserSerializer
+from app.schemas.auth import AuthRequest
 from app.services.auth import auth_service
 from app.core.config import settings
 from app.clients.redis_client import get_redis
 import redis.asyncio as redis
 from fastapi import Request
+from app.schemas.user import UserSerializer
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -100,37 +101,26 @@ async def logout(
     return APIResponse(message="Successfully logged out")
 
 
-# TODO: 可以增加一个 /refresh 接口，允许用户在 access token 过期后使用 refresh token 获取新的 access token，而不需要重新登录
-# 定义一个特殊的code 411用来表示 refresh token 无效或过期，前端收到这个code后可以直接跳转到登录页，而不需要显示错误信息
-@router.post("/refresh", response_model=APIResponse[UserSerializer])
+@router.post("/refresh", response_model=APIResponse)
 async def refresh_token(
     request: Request,
     response: Response,
     redis: redis.Redis = Depends(get_redis),
 ):
     refresh_token = request.cookies.get(REFRESH_TOKEN_KEY)
-
     if not refresh_token:
-        return APIResponse(code=411, message="Refresh token not found")
+        return APIResponse(code=411, message="Refresh token missing")
+    new_access_token = await auth_service.refresh_access_token(refresh_token, redis)
+    if not new_access_token:
+        return APIResponse(code=411, message="Failed to refresh access token")
 
-    user_id = await redis.get(f"refresh_token:{refresh_token}")
-    if not user_id:
-        return APIResponse(code=411, message="Invalid refresh token")
-
-    user = await auth_service.get_user_by_id(user_id)
-    if not user:
-        return APIResponse(code=404, message="User not found")
-
-    access_token = auth_service.create_access_token(
-        {"sub": str(user.id), "email": user.email}
-    )
     response.set_cookie(
         key=ACCESS_TOKEN_KEY,
-        value=access_token,
+        value=new_access_token,
         httponly=settings.cookie_httponly,
         secure=settings.cookie_secure,
         samesite=settings.cookie_samesite,
         max_age=settings.jwt_access_token_expires_minutes * 60,
     )
 
-    return APIResponse(data=user)
+    return APIResponse(message="Access token refreshed")

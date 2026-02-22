@@ -6,14 +6,6 @@ class AuthRequest(BaseModel):
     password: str
 
 
-class UserSerializer(BaseModel):
-    # id: int
-    username: str
-    email: EmailStr
-    # is_active: bool
-    model_config = {"from_attributes": True}
-
-
 class CaptchaRequest(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 

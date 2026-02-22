@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.models.user import User
+import redis.asyncio as redis
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -80,6 +81,31 @@ class AuthService:
             refresh_to_encode, settings.jwt_secret_key, algorithm=settings.jwt_algorithm
         )
         return refresh_token
+
+    # 刷新access token的函数
+    async def refresh_access_token(
+        self, refresh_token: str, redis: redis.Redis
+    ) -> Optional[str]:
+        try:
+            payload = jwt.decode(
+                refresh_token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm],
+            )
+            user_id: str = payload.get("sub")
+            if user_id is None:
+                return None
+
+            # 验证 refresh token 是否在 Redis 中有效
+            stored_user_id = await redis.get(f"refresh_token:{refresh_token}")
+            if stored_user_id is None or stored_user_id.decode("utf-8") != user_id:
+                return None
+
+            # 创建新的 access token
+            new_access_token = self.create_access_token({"sub": user_id})
+            return new_access_token
+        except jwt.PyJWTError:
+            return None
 
 
 auth_service = AuthService()

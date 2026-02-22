@@ -2,21 +2,26 @@ from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.clients.db import get_db
 from app.services.user import user_service
+from app.depends.jwt_guard import verify_user
+from app.schemas.response import APIResponse
+from app.schemas.user import UserSerializer
 
-router = APIRouter(prefix="/user", tags=["User"])
+
+router = APIRouter(prefix="/user", tags=["User"], dependencies=[Depends(verify_user)])
 
 
-@router.get("/me")
+@router.get(
+    "/me",
+    response_model=APIResponse[UserSerializer],
+)
 async def read_current_user(request: Request, db: AsyncSession = Depends(get_db)):
     user = request.state.user
-    if not user:
-        return Response(status_code=401, content="Unauthorized")
-    return {"id": user.id, "email": user.email, "username": user.username}
+    return APIResponse(data=user)
 
 
-@router.get("/{user_id}")
+@router.get("/{user_id}", response_model=APIResponse[UserSerializer])
 async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):
     user = await user_service.get_user_by_id(db, user_id)
     if not user:
-        return Response(status_code=404, content="User not found")
-    return {"id": user.id, "email": user.email, "username": user.username}
+        return APIResponse(message="User not found", code=404)
+    return APIResponse(data=user)
