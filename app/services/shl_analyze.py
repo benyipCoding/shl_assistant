@@ -10,7 +10,12 @@ from app.services.token_record import token_record_service
 
 class SHLAnalyzeService:
     async def analyze(
-        self, payload: SHLAnalyzePayload, db: AsyncSession, client_ip: str, llm_key: str
+        self,
+        payload: SHLAnalyzePayload,
+        db: AsyncSession,
+        client_ip: str,
+        llm_key: str,
+        user_id: int,
     ):
         """
         images_data expected format:
@@ -49,7 +54,7 @@ class SHLAnalyzeService:
             # 把token数量记录到数据库里，方便后续统计和分析
             # TODO: 可以考虑把每次调用的token数量和用户ID、调用时间等信息一起记录下来，做更细粒度的分析
             await token_record_service.record_token_usage(
-                db, client_ip, total_token_count, model=llm_key
+                db, client_ip, total_token_count, model=llm_key, user_id=user_id
             )
 
             result = json.loads(response.text)

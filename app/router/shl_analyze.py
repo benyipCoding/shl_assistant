@@ -41,7 +41,9 @@ async def process_shl_analyze(
         if not llm or not llm.enabled:
             return APIResponse(message="LLM not found or disabled", code=404)
 
-        result = await shl_service.analyze(payload, db, client_ip, llm.key)
+        result = await shl_service.analyze(
+            payload, db, client_ip, llm.key, request.state.user.id
+        )
         return APIResponse(data=result)
     except Exception as e:
         return APIResponse(message=str(e), code=500)
