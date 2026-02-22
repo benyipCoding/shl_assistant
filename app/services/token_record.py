@@ -6,7 +6,12 @@ from app.models.token_record import TokenRecord
 
 class TokenRecordService:
     async def record_token_usage(
-        self, db: AsyncSession, ip: str, token_count: int, model: str = None
+        self,
+        db: AsyncSession,
+        ip: str,
+        token_count: int,
+        model: str = None,
+        user_id: int = None,
     ):
         try:
             # stmt = select(TokenRecord).where(TokenRecord.ip == ip)
@@ -15,7 +20,9 @@ class TokenRecordService:
             # if record:
             #     record.token_count += token_count
             # else:
-            record = TokenRecord(ip=ip, token_count=token_count, model=model)
+            record = TokenRecord(
+                ip=ip, token_count=token_count, model=model, user_id=user_id
+            )
             db.add(record)
             await db.commit()
         except Exception as e:
