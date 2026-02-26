@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter
 from app.core.lifespan import lifespan
 from app.router import auth, captcha, shl_analyze, llms, user, ai_doctor
 from app.middlewares.auth import UserAuthMiddleware
+from app.middlewares.real_ip import RealIPMiddleware
 
 
 app = FastAPI(
@@ -10,6 +11,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+
+app.add_middleware(RealIPMiddleware)
 # 添加中间件，解析 JWT 并注入 user 到 request.state
 app.add_middleware(UserAuthMiddleware)
 

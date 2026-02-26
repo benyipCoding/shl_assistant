@@ -35,7 +35,7 @@ class AIDoctorService:
 
         await token_record_service.record_token_usage(
             db,
-            request.client.host,
+            getattr(request.state, "real_ip", request.client.host),
             total_token_count,
             model=payload.llmKey,
             user_id=request.state.user.id,

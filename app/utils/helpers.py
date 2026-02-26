@@ -11,6 +11,7 @@ def base64_to_bytes(b64: str) -> bytes:
 
 async def ai_rate_limit_key(request: Request):
     user = getattr(request.state, "user", None)
+    ip = getattr(request.state, "real_ip", None)
     if user:
         return f"user:{user.id}"
-    return f"ip:{request.client.host}"
+    return f"ip:{ip or request.client.host}"
