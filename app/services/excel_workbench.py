@@ -6,6 +6,7 @@ from app.clients.gemini import get_gemini_client
 from google.genai import types
 import json
 from fastapi import HTTPException
+from app.services.token_record import token_record_service
 
 
 class ExcelWorkbenchService:
@@ -13,13 +14,14 @@ class ExcelWorkbenchService:
         self, request: Request, payload: TransformRequest, db: AsyncSession
     ):
         try:
+            llm_key = "gemini-3-flash-preview"  # 目前先写死，后续可以从 payload 里传入，支持用户选择不同的模型
             client = get_gemini_client()
             system_instruction = generate_prompt(
                 columns=payload.columns, sampleRow=payload.sample_row
             )
 
             response = await client.aio.models.generate_content(
-                model="gemini-3-flash-preview",
+                model=llm_key,
                 contents=f"User Command: {payload.prompt}",
                 config=types.GenerateContentConfig(
                     system_instruction=system_instruction,
@@ -27,6 +29,13 @@ class ExcelWorkbenchService:
                     response_schema=AIResponseSchema,
                     # temperature=0.1  # 建议为严格的代码或 JSON 生成设置较低的 temperature
                 ),
+            )
+
+            total_token_count = int(
+                json.loads(response.json())["usage_metadata"]["total_token_count"]
+            )
+            await token_record_service.record_token_usage(
+                request, db, total_token_count, model=llm_key
             )
 
             if response.parsed:
