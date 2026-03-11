@@ -9,7 +9,9 @@ from app.schemas.response import APIResponse
 from app.services.llms import llms_service
 from app.depends.jwt_guard import verify_user
 from app.utils.helpers import ai_rate_limit_key
-from app.utils.file_handler import save_images_to_disk  # 【新增】引入保存图片的函数
+from app.utils.file_handler import (
+    handle_shl_analyze_background_task,
+)  # 【新增】引入保存图片和历史记录的统一函数
 
 
 router = APIRouter(
@@ -35,10 +37,17 @@ async def process_shl_analyze(
         return APIResponse(message="LLM not found or disabled", code=404)
 
     # 1. 等待 AI 分析完成
-    result = await shl_service.analyze(request, payload, db, llm.key)
+    result, token_count = await shl_service.analyze(request, payload, db, llm.key)
 
-    # 2. 【修改】分析成功后，将保存图片的任务挂载到后台执行
+    # 2. 【修改】分析成功后，将保存图片的任务以及历史记录挂载到后台执行
     # 这样代码会立刻执行下一步 return，不会在此处发生硬盘 I/O 阻塞
-    background_tasks.add_task(save_images_to_disk, payload.images_data)
+    background_tasks.add_task(
+        handle_shl_analyze_background_task,
+        payload.images_data,
+        request.state.user.id,
+        llm.key,
+        token_count,
+        result,
+    )
 
     return APIResponse(data=result)

@@ -58,7 +58,7 @@ class SHLAnalyzeService:
             )
 
             result = json.loads(response.text)
-            return result
+            return result, total_token_count
 
         except Exception as e:
             print(f"Error during SHL analysis: {str(e)}")
