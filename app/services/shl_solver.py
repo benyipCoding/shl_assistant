@@ -23,7 +23,10 @@ class SHLSolverService:
         )
 
         if user_id:
-            stmt = stmt.where(SHLSolverHistory.user_id == user_id)
+            # Check if user is staff or superuser
+            user = await db.get(User, user_id)
+            if not user or (not user.is_staff and not user.is_superuser):
+                stmt = stmt.where(SHLSolverHistory.user_id == user_id)
 
         # Calculate total count
         count_stmt = select(func.count()).select_from(stmt.subquery())
