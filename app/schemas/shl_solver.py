@@ -1,4 +1,5 @@
 from typing import Optional, List, Dict, Any
+from datetime import datetime
 from pydantic import BaseModel, ConfigDict, Field, BeforeValidator
 from typing_extensions import Annotated
 import json
@@ -38,6 +39,8 @@ class SHLSolverHistorySerializer(BaseModel):
     passed_test_cases: int
     status: str
     error_message: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
