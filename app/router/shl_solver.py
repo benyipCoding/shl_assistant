@@ -22,11 +22,14 @@ async def list_shl_history(
     page: int = Query(1, ge=1, description="Page number"),
     size: int = Query(10, ge=1, le=100, description="Page size"),
     db: AsyncSession = Depends(get_db),
+    user=Depends(verify_user),
 ):
     """
     Batch retrieve SHL solver history.
     """
-    items, total = await shl_solver_service.get_history_list(db, page, size)
+    items, total = await shl_solver_service.get_history_list(
+        db, page, size, user_id=user.id
+    )
 
     return APIResponse(
         data=SHLSolverHistoryListResponse(
