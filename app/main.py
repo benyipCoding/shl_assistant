@@ -13,12 +13,6 @@ from app.middlewares.auth import UserAuthMiddleware
 from app.middlewares.real_ip import RealIPMiddleware
 from fastapi.staticfiles import StaticFiles
 
-# 确保静态目录存在，不存在则创建
-import os
-
-if not os.path.exists("static"):
-    os.makedirs("static")
-
 
 app = FastAPI(
     title="SHL Solver API",
@@ -44,7 +38,3 @@ api_router.include_router(excel_workbench.router)
 
 # 将总路由挂载到 app，配置公共前缀 /api_v1
 app.include_router(api_router, prefix="/api_v1")
-
-
-# 挂载 StaticFiles，提供静态资源访问
-app.mount("/static", StaticFiles(directory="static"), name="static")
