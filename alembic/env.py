@@ -8,6 +8,7 @@ from app.models.base import Base
 from app.models.user import User
 from app.models.llms import LLMs
 from app.models.token_record import TokenRecord
+from app.models.shl_solver import SHLSolverHistory
 from app.core.config import settings
 
 # this is the Alembic Config object, which provides
