@@ -1,5 +1,6 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, Request
 from app.core.lifespan import lifespan
+from app.core.config import settings
 from app.router import (
     auth,
     captcha,
@@ -12,6 +13,7 @@ from app.router import (
 )
 from app.middlewares.auth import UserAuthMiddleware
 from app.middlewares.real_ip import RealIPMiddleware
+from app.core.exceptions import global_exception_handler
 
 
 app = FastAPI(
@@ -19,6 +21,12 @@ app = FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+
+
+# ==========================================
+# 全局异常捕获 - 注册
+# ==========================================
+app.add_exception_handler(Exception, global_exception_handler)
 
 
 app.add_middleware(RealIPMiddleware)

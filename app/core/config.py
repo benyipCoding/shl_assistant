@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     redis_username: str | None = None
     redis_password: str | None = None
 
+    # Email settings
+    sender_email: str | None = None
+    sender_password: str | None = None
+    smtp_server: str = "smtp.qq.com"
+    smtp_port: int = 465
+
     class Config:
         env_file = ".env"
 
