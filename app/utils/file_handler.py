@@ -7,6 +7,8 @@ from app.schemas.shl_analyze import ImageData
 from app.clients import db  # 修改为导入模块，从而可以使用 db.async_session
 from app.models.shl_solver import SHLSolverHistory
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Union, List, Dict, Any
+from fastapi.encoders import jsonable_encoder
 
 # 【新增】定义存储路径，指向我们配置好的 Docker 共享数据卷
 UPLOAD_DIR = "/app/uploads/shl_images"
@@ -56,7 +58,7 @@ async def save_shl_history_to_db(
     user_id: int,
     model: str,
     token_count: int,
-    result_data: dict,
+    result_data: Union[List, Dict, Any],  # 【修改1】类型提示兼容 List 和 Dict,
     image_paths: list[str],
 ):
     """
@@ -68,12 +70,15 @@ async def save_shl_history_to_db(
             return
 
         async with db.async_session() as session:
+            # 【核心修改2】使用 jsonable_encoder 确保数据能被安全序列化为 JSON
+            safe_json_data = jsonable_encoder(result_data)
+
             history = SHLSolverHistory(
                 image_urls=",".join(image_paths),
                 token_count=token_count,
                 model=model,
                 user_id=user_id,
-                result_json=json.dumps(result_data, ensure_ascii=False),
+                result_json=json.dumps(safe_json_data, ensure_ascii=False),
                 status="completed",
             )
             session.add(history)

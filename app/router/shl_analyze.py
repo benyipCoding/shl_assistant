@@ -12,6 +12,7 @@ from app.utils.helpers import ai_rate_limit_key
 from app.utils.file_handler import (
     handle_shl_analyze_background_task,
 )  # 【新增】引入保存图片和历史记录的统一函数
+from typing import List  # 如果你用的是较早的 Python 版本，可能需要这个
 
 
 router = APIRouter(
@@ -21,7 +22,7 @@ router = APIRouter(
 
 @router.post(
     "",
-    response_model=APIResponse[SHLAnalyzeResult],
+    response_model=APIResponse[List[SHLAnalyzeResult]],
     dependencies=[
         Depends(RateLimiter(times=3, seconds=60, identifier=ai_rate_limit_key)),
     ],
