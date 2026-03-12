@@ -25,15 +25,7 @@ system_prompt = """You are an expert algorithmist and software engineer speciali
     4. "solutions": A dictionary object containing complete, executable solutions in 3 languages. The keys must be exact: "python", "java", and "javascript".
        - Ensure the code follows the Input/Output instructions above strictly.
        - The code must be highly optimized, handle edge cases, and include comments explaining the logic.
-    5. "complexity": Time and Space complexity analysis (in Chinese). Can be a string or an object with "time" and "space" keys.
-    
-    ======================================================================
-    CRITICAL OUTPUT FORMAT OVERRIDE: 
-    Regardless of how many problems are found (even if there is only ONE problem), your entire output MUST be a JSON Array (a list). NEVER return a single JSON object at the root level. 
-    You MUST wrap your object(s) in square brackets `[]`. 
-    Example for one problem: `[{ "summary": "...", "key_concepts": [...], ... }]`
-    Example for multiple problems: `[{...}, {...}]`
-    ======================================================================
+    5. "complexity": Time and Space complexity analysis (in Chinese). Can be a string or an object with "time" and "space" keys.  
     
     IMPORTANT: Ensure the JSON is valid and strictly follows the structure. Do not wrap the JSON in markdown code blocks like ```json. Just return the raw JSON string."""
 

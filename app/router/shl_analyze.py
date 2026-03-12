@@ -22,7 +22,7 @@ router = APIRouter(
 
 @router.post(
     "",
-    response_model=APIResponse[List[SHLAnalyzeResult]],
+    response_model=APIResponse[SHLAnalyzeResult],
     dependencies=[
         Depends(RateLimiter(times=3, seconds=60, identifier=ai_rate_limit_key)),
     ],
@@ -41,18 +41,8 @@ async def process_shl_analyze(
         # 1. 等待 AI 分析完成
         result, token_count = await shl_service.analyze(request, payload, db, llm.key)
 
-        # ==========================================
-        # 【新增核心修复】强制规范化 AI 返回的数据结构
-        # ==========================================
-        # 如果 AI 返回的是一个单对象（字典），我们主动给它套一层中括号变成列表
-        if isinstance(result, dict):
-            normalized_result = [result]
-        # 如果 AI 返回的本来就是列表，就保持原样
-        elif isinstance(result, list):
-            normalized_result = result
-        else:
-            # 万一 AI 抽风返回了别的乱七八糟的类型（比如字符串），做个兜底
-            normalized_result = []
+        if isinstance(result, list):
+            result = result[0] if result else {}
 
         # 2. 分析成功后，将保存图片的任务以及历史记录挂载到后台执行
         # 这样代码会立刻执行下一步 return，不会在此处发生硬盘 I/O 阻塞
@@ -62,10 +52,11 @@ async def process_shl_analyze(
             request.state.user.id,
             llm.key,
             token_count,
-            normalized_result,
+            result,
             status="completed",
         )
-        return APIResponse(data=normalized_result)
+
+        return APIResponse(data=result)
 
     except Exception as e:
         # 3. 如果分析失败，也要记录失败的历史
