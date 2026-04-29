@@ -109,6 +109,7 @@ async def get_report_events(view: str, code: str, request: Request):
     return await _proxy_request(f"/report/events/{view}/{code}", request)
 
 
+# 注意：/report/tables/{view}/{code} 可能会返回非常大的数据，前端需要做好处理准备
 @router.get("/report/tables/{view}/{code}", response_model=APIResponse[Any])
 async def get_report_tables(view: str, code: str, request: Request):
     return await _proxy_request(f"/report/tables/{view}/{code}", request)
