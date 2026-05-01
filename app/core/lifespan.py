@@ -3,6 +3,7 @@ from fastapi import FastAPI
 
 from app.clients.gemini import init_gemini_client
 from app.clients.ff14 import close_ff14_client, init_ff14_client
+from app.clients.ff14_v2 import close_ff14_v2_client, init_ff14_v2_client
 from app.core.config import settings
 from app.clients.db import init_db, close_db
 from app.clients.redis_client import init_redis, close_redis
@@ -18,6 +19,8 @@ async def lifespan(app: FastAPI):
     print("✅ OpenRouter client initialized")
     init_ff14_client()
     print("✅ FF Logs client initialized")
+    init_ff14_v2_client()
+    print("✅ FF Logs V2 client initialized")
     # 初始化数据库（如果配置了 DATABASE_URL ）
     if settings.database_url_async:
         init_db(settings.database_url_async)
@@ -49,6 +52,12 @@ async def lifespan(app: FastAPI):
     try:
         await close_ff14_client()
         print("🛑 FF Logs client closed")
+    except Exception:
+        pass
+
+    try:
+        await close_ff14_v2_client()
+        print("🛑 FF Logs V2 client closed")
     except Exception:
         pass
 

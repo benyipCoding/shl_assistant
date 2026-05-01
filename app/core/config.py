@@ -39,6 +39,13 @@ class Settings(BaseSettings):
     # FF14
     ff14_api_key: str
     ff14_base_url: str
+    ff14_v2_client_id: str
+    ff14_v2_secret_key: str
+    ff14_v2_redirect_uri: str
+    ff14_v2_authorize_url: str = "https://www.fflogs.com/oauth/authorize"
+    ff14_v2_token_url: str = "https://www.fflogs.com/oauth/token"
+    ff14_v2_client_base_url: str = "https://www.fflogs.com/api/v2/client"
+    ff14_v2_user_base_url: str = "https://www.fflogs.com/api/v2/user"
 
     frontend_base_url: str = "http://localhost:3000"
 
