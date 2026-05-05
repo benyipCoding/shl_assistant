@@ -11,6 +11,7 @@ from app.router import (
     user,
     ai_doctor,
     excel_workbench,
+    market_master,
     shl_solver,
     wallet_credit,
 )
@@ -48,6 +49,7 @@ api_router.include_router(ff14_v2.router)
 api_router.include_router(user.router)
 api_router.include_router(ai_doctor.router)
 api_router.include_router(excel_workbench.router)
+api_router.include_router(market_master.router)
 api_router.include_router(shl_solver.router)
 api_router.include_router(wallet_credit.router)
 

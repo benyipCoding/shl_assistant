@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     ff14_v2_client_base_url: str = "https://www.fflogs.com/api/v2/client"
     ff14_v2_user_base_url: str = "https://www.fflogs.com/api/v2/user"
 
+    # Twelve Data
+    twelve_data_api_key: str
+    twelve_data_base_url: str
+
     frontend_base_url: str = "http://localhost:3000"
 
     class Config:
