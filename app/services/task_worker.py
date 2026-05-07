@@ -1,3 +1,5 @@
+import asyncio
+import traceback
 import json
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,6 +13,7 @@ from app.services.token_record import token_record_service
 from app.utils.file_handler import (
     handle_shl_analyze_background_task,
 )
+from app.utils.alert_utils import send_email_alert
 
 
 async def background_shl_solver_task(
@@ -78,6 +81,18 @@ async def background_shl_solver_task(
 
         except Exception as e:
             print(f"后台任务 {task_id} 执行失败: {e}")
+
+            error_msg = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            alert_text = (
+                "🚨 后端服务报警 (后台 SHL 分析任务失败)\n\n"
+                f"Task ID: {task_id}\n"
+                f"User ID: {user_id}\n"
+                f"Request Path: {request_path}\n"
+                f"Model: {llm_key}\n"
+                f"Error: {str(e)}\n\n"
+                f"Traceback:\n{error_msg}"
+            )
+            await asyncio.to_thread(send_email_alert, alert_text)
 
             # 3-2. 发生异常，记录错误信息并标记为 FAILED
             if task:

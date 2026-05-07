@@ -1,9 +1,13 @@
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from app.core.config import settings
 
 
-def send_email_alert(content: str):
+logger = logging.getLogger(__name__)
+
+
+def send_email_alert(content: str) -> bool:
     """
     发送异常报警邮件 (同步函数)
     """
@@ -12,8 +16,8 @@ def send_email_alert(content: str):
     password = settings.sender_password
     # 如果没配置邮箱，直接就不发了，避免报错
     if not sender or not password:
-        print("❌ 未配置 SENDER_EMAIL 或 SENDER_PASSWORD，跳过发送报警邮件")
-        return
+        logger.error("未配置 SENDER_EMAIL 或 SENDER_PASSWORD，跳过发送报警邮件")
+        return False
 
     receiver = sender  # 收件人邮箱 (可以是自己发给自己)
 
@@ -25,10 +29,12 @@ def send_email_alert(content: str):
 
     try:
         # 使用配置中的 SMTP 服务器和端口
-        server = smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port)
+        server = smtplib.SMTP_SSL(settings.smtp_server, settings.smtp_port, timeout=10)
         server.login(sender, password)
         server.sendmail(sender, [receiver], msg.as_string())
         server.quit()
-        print(f"✅ 报警邮件已发送成功: {receiver}")
+        logger.info("报警邮件已发送成功: %s", receiver)
+        return True
     except Exception as e:
-        print(f"❌ 邮件发送失败: {e}")
+        logger.exception("报警邮件发送失败: %s", e)
+        return False

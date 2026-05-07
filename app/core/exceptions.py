@@ -10,7 +10,7 @@ async def global_exception_handler(request: Request, exc: Exception):
     全局异常捕获处理函数
     """
     # 1. 提取完整的错误堆栈
-    error_msg = traceback.format_exc()
+    error_msg = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
 
     # 2. 组装报警信息
     alert_text = f"🚨 后端服务报警\n\nURL: {request.url}\nMethod: {request.method}\nError: {str(exc)}\n\nTraceback:\n{error_msg}"
