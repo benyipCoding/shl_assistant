@@ -2,6 +2,7 @@ from fastapi import FastAPI, APIRouter, Request
 from app.core.lifespan import lifespan
 from app.core.config import settings
 from app.router import (
+    admin,
     auth,
     captcha,
     shl_analyze,
@@ -20,9 +21,24 @@ from app.middlewares.real_ip import RealIPMiddleware
 from app.core.exceptions import global_exception_handler
 
 
+openapi_tags = [
+    {
+        "name": "Admin",
+        "description": "仅超级管理员可访问的后台管理接口。认证支持 Cookie 中的 access_token，或 Authorization: Bearer <token> 请求头。",
+    }
+]
+
+
 app = FastAPI(
     title="SHL Solver API",
     version="0.1.0",
+    description=(
+        "SHL Solver 后端接口文档。\n\n"
+        "- 全部接口统一挂载在 /api_v1 前缀下。\n"
+        "- 需要登录的接口支持两种认证方式：浏览器 Cookie(access_token) 或 Authorization: Bearer <token>。\n"
+        "- /api_v1/admin 下的接口仅允许 is_superuser=true 的用户访问。"
+    ),
+    openapi_tags=openapi_tags,
     lifespan=lifespan,
 )
 
@@ -42,6 +58,7 @@ app.add_middleware(UserAuthMiddleware)
 api_router = APIRouter()
 api_router.include_router(auth.router)
 api_router.include_router(captcha.router)
+api_router.include_router(admin.router)
 api_router.include_router(shl_analyze.router)
 api_router.include_router(llms.router)
 api_router.include_router(ff14.router)

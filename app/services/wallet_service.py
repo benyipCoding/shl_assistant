@@ -13,6 +13,38 @@ class InsufficientCreditsException(Exception):
 
 
 class WalletService:
+    async def _get_wallet_for_update(self, db: AsyncSession, user_id: int):
+        stmt = select(UserCredit).where(UserCredit.user_id == user_id).with_for_update()
+        result = await db.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def _recharge_user_credit(
+        self, db: AsyncSession, target_user: User, points: int
+    ) -> int:
+        wallet = await self._get_wallet_for_update(db, target_user.id)
+
+        if not wallet:
+            wallet = UserCredit(
+                user_id=target_user.id, free_credits=0, paid_credits=points
+            )
+            db.add(wallet)
+            balance_after = points
+        else:
+            wallet.paid_credits += points
+            balance_after = wallet.free_credits + wallet.paid_credits
+
+        log = UserCreditLog(
+            user_id=target_user.id,
+            amount=points,
+            credit_type=CreditType.PAID,
+            action_type=ActionType.TOP_UP,
+            balance_after=balance_after,
+        )
+        db.add(log)
+
+        await db.commit()
+        return balance_after
+
     async def recharge_credit(self, db: AsyncSession, email: str, points: int) -> int:
         """
         根据邮箱给用户充值算力
@@ -26,38 +58,19 @@ class WalletService:
         if not target_user:
             raise HTTPException(status_code=404, detail="找不到该邮箱对应的用户")
 
-        # 2. 查钱包（加悲观锁防止并发问题）
-        c_stmt = (
-            select(UserCredit)
-            .where(UserCredit.user_id == target_user.id)
-            .with_for_update()
-        )
-        result = await db.execute(c_stmt)
-        wallet = result.scalar_one_or_none()
+        return await self._recharge_user_credit(db, target_user, points)
 
-        if not wallet:
-            # 如果没有钱包但需要充值，直接新建
-            wallet = UserCredit(
-                user_id=target_user.id, free_credits=0, paid_credits=points
-            )
-            db.add(wallet)
-            balance_after = points
-        else:
-            wallet.paid_credits += points
-            balance_after = wallet.free_credits + wallet.paid_credits
+    async def recharge_credit_by_user_id(
+        self, db: AsyncSession, user_id: int, points: int
+    ) -> int:
+        stmt = select(User).where(User.id == user_id)
+        result = await db.execute(stmt)
+        target_user = result.scalar_one_or_none()
 
-        # 3. 记录流水
-        log = UserCreditLog(
-            user_id=target_user.id,
-            amount=points,
-            credit_type=CreditType.PAID,
-            action_type=ActionType.TOP_UP,
-            balance_after=balance_after,
-        )
-        db.add(log)
+        if not target_user:
+            raise HTTPException(status_code=404, detail="找不到该用户")
 
-        await db.commit()
-        return balance_after
+        return await self._recharge_user_credit(db, target_user, points)
 
     async def create_wallet_with_bonus(
         self, db: AsyncSession, user_id: int, bonus_amount: int
