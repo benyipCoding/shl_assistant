@@ -20,7 +20,7 @@ class SHLAnalyzeResult(BaseModel):
 
 
 class SHLCodeVerifyPayload(BaseModel):
-    image_data: ImageData  # single image for verification
+    images_data: list[ImageData]  # support multiple images for verification
     reference_code: str
     language: str = "python"  # default to python
 

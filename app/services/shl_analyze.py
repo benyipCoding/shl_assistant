@@ -105,17 +105,18 @@ class SHLAnalyzeService:
 
             user_parts = [instruction_part, reference_code_part]
 
-            # Process Image
-            if payload.image_data:
-                mime_type = getattr(payload.image_data, "mimeType", "image/jpeg")
-                base64_data = getattr(payload.image_data, "data", "")
+            # Process Images
+            if getattr(payload, "images_data", None):
+                for img in payload.images_data:
+                    mime_type = getattr(img, "mimeType", "image/jpeg")
+                    base64_data = getattr(img, "data", "")
 
-                if base64_data:
-                    image_bytes = base64_to_bytes(base64_data)
-                    image_part = types.Part.from_bytes(
-                        data=image_bytes, mime_type=mime_type
-                    )
-                    user_parts.append(image_part)
+                    if base64_data:
+                        image_bytes = base64_to_bytes(base64_data)
+                        image_part = types.Part.from_bytes(
+                            data=image_bytes, mime_type=mime_type
+                        )
+                        user_parts.append(image_part)
 
             contents = [types.Content(role="user", parts=user_parts)]
 
@@ -247,16 +248,17 @@ class SHLAnalyzeService:
                 }
             )
 
-            # Process Image
-            if payload.image_data:
-                mime_type = getattr(payload.image_data, "mimeType", "image/jpeg")
-                base64_data = getattr(payload.image_data, "data", "")
+            # Process Images
+            if getattr(payload, "images_data", None):
+                for img in payload.images_data:
+                    mime_type = getattr(img, "mimeType", "image/jpeg")
+                    base64_data = getattr(img, "data", "")
 
-                if base64_data:
-                    image_url = f"data:{mime_type};base64,{base64_data}"
-                    user_content.append(
-                        {"type": "image_url", "image_url": {"url": image_url}}
-                    )
+                    if base64_data:
+                        image_url = f"data:{mime_type};base64,{base64_data}"
+                        user_content.append(
+                            {"type": "image_url", "image_url": {"url": image_url}}
+                        )
 
             if user_content:
                 messages.append({"role": "user", "content": user_content})
