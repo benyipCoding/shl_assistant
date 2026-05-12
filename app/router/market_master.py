@@ -295,9 +295,23 @@ async def get_time_series(
     dp: int | None = Query(
         None, ge=0, le=11, description="价格保留小数位，范围 0 到 11。"
     ),
+    filter_non_trading: bool = Query(
+        True,
+        description=(
+            "是否过滤明显处于休市状态的平盘 K 线。开启后会剔除周末的静态 K 线，"
+            "以及整天都保持平盘的节假日样式 K 线；如需保留 Twelve Data 原始结果可设为 false。"
+        ),
+    ),
 ):
     return await _service_response(
-        market_master_service.get_time_series(_request_params(request))
+        market_master_service.get_time_series(
+            {
+                key: value
+                for key, value in _request_params(request).items()
+                if key != "filter_non_trading"
+            },
+            filter_non_trading=filter_non_trading,
+        )
     )
 
 
@@ -521,6 +535,13 @@ async def get_kline_defaults(
     dp: int | None = Query(
         None, ge=0, le=11, description="价格保留小数位，范围 0 到 11。"
     ),
+    filter_non_trading: bool = Query(
+        True,
+        description=(
+            "是否默认过滤明显处于休市状态的平盘 K 线。默认开启，适合直接给图表渲染；"
+            "如需保留原始时序可设为 false。"
+        ),
+    ),
 ):
     return await _service_response(
         market_master_service.get_kline_defaults(
@@ -537,6 +558,7 @@ async def get_kline_defaults(
             adjust=adjust,
             prepost=prepost,
             dp=dp,
+            filter_non_trading=filter_non_trading,
         )
     )
 
