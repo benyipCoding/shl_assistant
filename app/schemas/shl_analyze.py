@@ -1,3 +1,4 @@
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -20,7 +21,10 @@ class SHLAnalyzeResult(BaseModel):
 
 
 class SHLCodeVerifyPayload(BaseModel):
-    images_data: list[ImageData]  # support multiple images for verification
+    images_data: Optional[list[ImageData]] = (
+        None  # support multiple images for verification
+    )
+    image_data: Optional[ImageData] = None
     reference_code: str
     language: str = "python"  # default to python
 

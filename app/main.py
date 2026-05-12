@@ -18,7 +18,8 @@ from app.router import (
 )
 from app.middlewares.auth import UserAuthMiddleware
 from app.middlewares.real_ip import RealIPMiddleware
-from app.core.exceptions import global_exception_handler
+from app.core.exceptions import global_exception_handler, validation_exception_handler
+from fastapi.exceptions import RequestValidationError
 
 
 openapi_tags = [
@@ -47,7 +48,7 @@ app = FastAPI(
 # 全局异常捕获 - 注册
 # ==========================================
 app.add_exception_handler(Exception, global_exception_handler)
-
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 app.add_middleware(RealIPMiddleware)
 # 添加中间件，解析 JWT 并注入 user 到 request.state

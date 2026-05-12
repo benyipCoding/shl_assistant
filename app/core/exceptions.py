@@ -2,7 +2,28 @@ import traceback
 import asyncio
 from fastapi import Request
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from app.utils.alert_utils import send_email_alert
+
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """
+    专门捕获 FastAPI 422 参数校验错误的处理器
+    """
+    error_msg = str(exc.errors())
+    alert_text = f"🚨 后端服务报警 (参数校验失败)\n\nURL: {request.url}\nMethod: {request.method}\nError: 传参不符合后台模型规范\n\nDetail:\n{error_msg}"
+
+    # 丢到后台发报警邮件
+    asyncio.create_task(asyncio.to_thread(send_email_alert, alert_text))
+
+    return JSONResponse(
+        status_code=422,
+        content={
+            "code": 422,
+            "message": "前端传参错误（可能是格式不支持或网络引起的数据截断）",
+            "data": exc.errors(),
+        },
+    )
 
 
 async def global_exception_handler(request: Request, exc: Exception):
