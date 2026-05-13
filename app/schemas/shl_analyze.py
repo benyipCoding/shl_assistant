@@ -10,6 +10,7 @@ class ImageData(BaseModel):
 class SHLAnalyzePayload(BaseModel):
     images_data: list[ImageData]
     llmId: int
+    test_case_image: Optional[ImageData] = None
 
 
 class SHLAnalyzeResult(BaseModel):

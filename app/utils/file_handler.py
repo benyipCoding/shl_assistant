@@ -7,7 +7,7 @@ from app.schemas.shl_analyze import ImageData
 from app.clients import db  # 修改为导入模块，从而可以使用 db.async_session
 from app.models.shl_solver import SHLSolverHistory
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Union, List, Dict, Any
+from typing import Union, List, Dict, Any, Optional
 from fastapi.encoders import jsonable_encoder
 
 # 【新增】定义存储路径，指向我们配置好的 Docker 共享数据卷
@@ -61,6 +61,7 @@ async def save_shl_history_to_db(
     result_data: Union[List, Dict, Any],  # 【修改1】类型提示兼容 List 和 Dict,
     image_paths: list[str],
     status: str = "completed",
+    test_case_image_path: Optional[str] = None,
 ):
     """
     保存 SHL 分析的历史记录到数据库
@@ -76,6 +77,7 @@ async def save_shl_history_to_db(
 
             history = SHLSolverHistory(
                 image_urls=",".join(image_paths),
+                test_case_image_url=test_case_image_path,
                 token_count=token_count,
                 model=model,
                 user_id=user_id,
@@ -96,6 +98,7 @@ async def handle_shl_analyze_background_task(
     token_count: int,
     result_data: Union[List, Dict, Any],
     status: str = "completed",
+    test_case_image_data: Optional[ImageData] = None,
 ):
     """
     处理 SHL 分析后的后台任务：保存图片 + 记录历史
@@ -105,7 +108,19 @@ async def handle_shl_analyze_background_task(
     # 但这里为了复用简单逻辑，暂且保持同步 IO，在线程池或后台任务中跑也没问题
     saved_paths = save_images_to_local(images_data)
 
+    test_case_image_path = None
+    if test_case_image_data:
+        test_case_paths = save_images_to_local([test_case_image_data])
+        if test_case_paths:
+            test_case_image_path = test_case_paths[0]
+
     # 2. 再异步保存数据库记录
     await save_shl_history_to_db(
-        user_id, model, token_count, result_data, saved_paths, status=status
+        user_id,
+        model,
+        token_count,
+        result_data,
+        saved_paths,
+        status=status,
+        test_case_image_path=test_case_image_path,
     )

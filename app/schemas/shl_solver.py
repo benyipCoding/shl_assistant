@@ -29,6 +29,7 @@ StringList = Annotated[List[str], BeforeValidator(parse_comma_separated_list)]
 class SHLSolverHistorySerializer(BaseModel):
     id: int
     image_urls: StringList = Field(..., description="List of image URLs")
+    test_case_image_url: Optional[str] = Field(None, description="Test case image URL")
     token_count: int
     model: Optional[str] = None
     username: str = Field(

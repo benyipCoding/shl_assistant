@@ -78,6 +78,7 @@ async def background_shl_solver_task(
                 token_count=token_count,
                 result_data=ai_result,
                 status="completed",
+                test_case_image_data=getattr(payload, "test_case_image", None),
             )
 
             # ---- 记录埋点数据 ----

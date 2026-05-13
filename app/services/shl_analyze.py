@@ -31,7 +31,17 @@ class SHLAnalyzeService:
         [{"mimeType": "image/jpeg", "data": "<base64_encoded_string>"}, ...]
         """
         try:
-            contents = [user_prompt]
+            current_user_prompt = user_prompt
+
+            if getattr(payload, "test_case_image", None):
+                current_user_prompt += (
+                    "\n\nCRITICAL IMPORTANT REGARDING TEST CASES:\n"
+                    "1. I will provide an additional image containing the ACTUAL test cases.\n"
+                    "2. Your generated code MUST pass these actual test cases.\n"
+                    "3. If the examples provided in the problem description conflict with these actual test cases, ALWAYS PRIORITIZE the actual test cases, as the problem description might be an outdated version."
+                )
+
+            contents = [current_user_prompt]
 
             for img in payload.images_data:
                 mime_type = getattr(img, "mimeType", "image/jpeg")
@@ -45,6 +55,18 @@ class SHLAnalyzeService:
                     data=image_bytes, mime_type=mime_type
                 )
                 contents.append(image_part)
+
+            if getattr(payload, "test_case_image", None):
+                contents.append("Here is the image containing the ACTUAL TEST CASES:")
+                tc_mime_type = getattr(
+                    payload.test_case_image, "mimeType", "image/jpeg"
+                )
+                tc_base64_data = getattr(payload.test_case_image, "data", "")
+                tc_image_bytes = base64_to_bytes(tc_base64_data)
+                tc_image_part = types.Part.from_bytes(
+                    data=tc_image_bytes, mime_type=tc_mime_type
+                )
+                contents.append(tc_image_part)
 
             # Call the model using the typed GenerateContentConfig
             client = get_gemini_client()
@@ -175,13 +197,23 @@ class SHLAnalyzeService:
         llm_key: str,
     ):
         try:
+            current_user_prompt = user_prompt
+
+            if getattr(payload, "test_case_image", None):
+                current_user_prompt += (
+                    "\n\nCRITICAL IMPORTANT REGARDING TEST CASES:\n"
+                    "1. I will provide an additional image containing the ACTUAL test cases.\n"
+                    "2. Your generated code MUST pass these actual test cases.\n"
+                    "3. If the examples provided in the problem description conflict with these actual test cases, ALWAYS PRIORITIZE the actual test cases, as the problem description might be an outdated version."
+                )
+
             messages = []
             if system_prompt:
                 messages.append({"role": "system", "content": system_prompt})
 
             user_content = []
-            if user_prompt:
-                user_content.append({"type": "text", "text": user_prompt})
+            if current_user_prompt:
+                user_content.append({"type": "text", "text": current_user_prompt})
 
             for img in payload.images_data:
                 mime_type = getattr(img, "mimeType", "image/jpeg")
@@ -193,6 +225,24 @@ class SHLAnalyzeService:
                     user_content.append(
                         {"type": "image_url", "image_url": {"url": image_url}}
                     )
+
+            if getattr(payload, "test_case_image", None):
+                user_content.append(
+                    {
+                        "type": "text",
+                        "text": "Here is the image containing the ACTUAL TEST CASES:",
+                    }
+                )
+                tc_mime_type = getattr(
+                    payload.test_case_image, "mimeType", "image/jpeg"
+                )
+                tc_base64_data = getattr(payload.test_case_image, "data", "")
+                if tc_base64_data:
+                    image_url = f"data:{tc_mime_type};base64,{tc_base64_data}"
+                    user_content.append(
+                        {"type": "image_url", "image_url": {"url": image_url}}
+                    )
+
             if user_content:
                 messages.append({"role": "user", "content": user_content})
 

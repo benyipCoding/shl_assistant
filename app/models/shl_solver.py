@@ -8,6 +8,7 @@ class SHLSolverHistory(Base, TimestampMixin):
     __tablename__ = "shl_solver_history"
 
     image_urls = Column(String, nullable=False)  # 存储图片 URL，多个 URL 可用逗号分隔
+    test_case_image_url = Column(String, nullable=True)  # 存储测试用例图片 URL
     token_count = Column(Integer, default=0, nullable=False)
     model = Column(String(100), nullable=True)  # 可选字段，记录使用的模型名称
     user_id = Column(Integer, nullable=False)  # 关联用户 ID
