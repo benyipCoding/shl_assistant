@@ -41,3 +41,8 @@ class SHLCodeVerifyResult(BaseModel):
     summary: str
     has_errors: bool
     errors: list[CodeVerifyError]
+
+
+class TaskSubmitResponse(BaseModel):
+    task_id: str
+    status: str

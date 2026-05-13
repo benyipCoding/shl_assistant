@@ -7,7 +7,7 @@ from app.clients import db as db_client
 from app.models.ai_task import AITask, TaskStatus
 from app.services.shl_analyze import shl_service
 from app.services.wallet_service import wallet_service
-from app.schemas.shl_analyze import SHLAnalyzePayload
+from app.schemas.shl_analyze import SHLAnalyzePayload, SHLCodeVerifyPayload
 from app.models.shl_solver import ActionType
 from app.services.token_record import token_record_service
 from app.utils.file_handler import (
@@ -141,4 +141,101 @@ async def background_shl_solver_task(
                 token_count=0,
                 result_data={"error": str(e)},
                 status="failed",
+            )
+
+
+async def background_code_verify_task(
+    task_id: str,
+    user_id: int,
+    payload: SHLCodeVerifyPayload,
+    cost: int,
+    action_type: ActionType,
+    ip: str,
+    request_path: str,
+):
+    """
+    纯后台执行的 AI 代码离线对比/纠错任务
+    """
+    async with db_client.async_session() as db:
+        assert isinstance(db, AsyncSession), "async_session 必须返回 AsyncSession 实例"
+        llm_key = "gemini-3-flash-preview"  # 内部使用
+        try:
+            stmt = select(AITask).where(AITask.task_id == task_id)
+            result = await db.execute(stmt)
+            task = result.scalars().first()
+
+            if not task:
+                print(f"Error: 找不到任务 {task_id}")
+                return
+
+            task.status = TaskStatus.PROCESSING
+            await db.commit()
+
+            ai_result, token_count = await shl_service.verify_code(payload=payload)
+
+            task.status = TaskStatus.COMPLETED
+            # 将 pydantic model 转换为 dict
+            task.result = (
+                ai_result.model_dump()
+                if hasattr(ai_result, "model_dump")
+                else ai_result.dict()
+            )
+            await db.commit()
+
+            await token_record_service.record_token_usage(
+                ip=ip,
+                request_path=request_path,
+                user_id=user_id,
+                db=db,
+                token_count=token_count,
+                model=llm_key,
+            )
+
+            # ---- 记录埋点数据 ----
+            capture_event(
+                str(user_id),
+                "ai_task_completed",
+                properties={
+                    "task_type": "CODE_VERIFY",
+                    "task_id": task_id,
+                    "llm_key": llm_key,
+                    "token_count": token_count,
+                    "cost": cost,
+                    "$ip": ip,
+                },
+            )
+
+        except Exception as e:
+            print(f"后台纠错任务 {task_id} 执行失败: {e}")
+            error_msg = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+            alert_text = (
+                "🚨 后端服务报警 (后台 AI 纠错任务失败)\\n\\n"
+                f"Task ID: {task_id}\\n"
+                f"User ID: {user_id}\\n"
+                f"Request Path: {request_path}\\n"
+                f"Error: {str(e)}\\n\\n"
+                f"Traceback:\\n{error_msg}"
+            )
+            await asyncio.to_thread(send_email_alert, alert_text)
+
+            if task:
+                task.status = TaskStatus.FAILED
+                task.error_message = str(e)
+
+            await wallet_service.refund_credits(
+                db=db, user_id=user_id, amount=cost, action_type=action_type
+            )
+            await db.commit()
+
+            capture_event(
+                str(user_id),
+                "ai_task_failed",
+                properties={
+                    "task_type": "CODE_VERIFY",
+                    "task_id": task_id,
+                    "llm_key": llm_key,
+                    "error_msg": str(e),
+                    "cost_refunded": cost,
+                    "$ip": ip,
+                },
             )

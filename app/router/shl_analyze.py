@@ -9,6 +9,7 @@ from app.schemas.shl_analyze import (
     SHLAnalyzeResult,
     SHLCodeVerifyPayload,
     SHLCodeVerifyResult,
+    TaskSubmitResponse,
 )
 from app.services.shl_analyze import shl_service
 from app.schemas.response import APIResponse
@@ -21,7 +22,10 @@ from app.models.shl_solver import ActionType
 
 # 引入模型和枚举
 from app.models.ai_task import AITask, TaskStatus
-from app.services.task_worker import background_shl_solver_task
+from app.services.task_worker import (
+    background_shl_solver_task,
+    background_code_verify_task,
+)
 from sqlalchemy.future import select
 import traceback
 from app.clients.posthog_client import capture_event
@@ -38,7 +42,7 @@ VERIFY_CODE_COST = 5
 
 @router.post(
     "",
-    # response_model=APIResponse[SHLAnalyzeResult],
+    response_model=APIResponse[TaskSubmitResponse],
     dependencies=[
         Depends(RateLimiter(times=2, seconds=60, identifier=ai_rate_limit_key)),
     ],
@@ -120,7 +124,7 @@ async def process_shl_analyze(
 
 @router.post(
     "/verify-code",
-    response_model=APIResponse[SHLCodeVerifyResult],
+    response_model=APIResponse[TaskSubmitResponse],
     dependencies=[
         Depends(RateLimiter(times=5, seconds=60, identifier=ai_rate_limit_key)),
     ],
@@ -128,9 +132,13 @@ async def process_shl_analyze(
 async def process_code_verify(
     request: Request,
     payload: SHLCodeVerifyPayload,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     user_id = request.state.user.id
+    client_ip = getattr(request.state, "real_ip", request.client.host)
+    req_path = request.url.path
+
     # 拍照纠错统一计费策略
     cost = VERIFY_CODE_COST
     action_type = ActionType.USE_VISION_DIFF
@@ -144,31 +152,46 @@ async def process_code_verify(
         return APIResponse(message="算力点数不足，请充值", code=402)
 
     try:
-        # 1. AI代码纠错
-        # 不需要 llmId，内部固定使用 gemini-3-flash-preview
-        result, total_token = await shl_service.verify_code(payload)
-        return APIResponse(data=result)
-
-    except asyncio.CancelledError:
-        await db.rollback()
-        # 如果 verify 因客户端断开被取消，退费
-        await wallet_service.refund_credits(
-            db, user_id=user_id, amount=cost, action_type=action_type
+        # 2. 创建 PENDING 状态的任务记录
+        new_task = AITask(
+            user_id=user_id, task_type="CODE_VERIFY", status=TaskStatus.PENDING
         )
-        return APIResponse(message="Request cancelled by client", code=499)
+        db.add(new_task)
+        await db.commit()
+        await db.refresh(new_task)
+
+        # 3. 把耗时工作丢进后台
+        background_tasks.add_task(
+            background_code_verify_task,
+            task_id=new_task.task_id,
+            user_id=user_id,
+            payload=payload,
+            cost=cost,
+            action_type=action_type,
+            ip=client_ip,
+            request_path=req_path,
+        )
+
+        capture_event(
+            str(user_id),
+            "ai_task_started",
+            properties={
+                "task_type": "CODE_VERIFY",
+                "cost": cost,
+                "$ip": client_ip,
+                "$user_agent": request.headers.get("user-agent", ""),
+            },
+        )
+
+        return APIResponse(
+            data={"task_id": new_task.task_id, "status": TaskStatus.PENDING.value}
+        )
 
     except Exception as e:
         await db.rollback()
-        # 如果 verify 失败，退还费用
-        await wallet_service.refund_credits(
-            db, user_id=user_id, amount=cost, action_type=action_type
-        )
-        # 手动触发报警邮件逻辑
-        error_msg = traceback.format_exc()
-        alert_text = f"🚨 后端服务报警 (AI纠错失败)\n\nURL: {request.url}\nMethod: {request.method}\nError: {str(e)}\n\nTraceback:\n{error_msg}"
-        asyncio.create_task(asyncio.to_thread(send_email_alert, alert_text))
-
-        return APIResponse(message=f"纠错失败: {str(e)}", code=500)
+        # 创建任务失败时的兜底退款
+        await wallet_service.refund_credits(db, user_id, cost, action_type)
+        raise e
 
 
 # ==========================================
